@@ -18,15 +18,26 @@ impl Provider for Kraken {
     fn parse_response(&self, body: &str) -> Result<serde_json::Value> {
         let json: serde_json::Value = serde_json::from_str(body)?;
 
-        let price = json
-            .get("result") // Retrieves the value at key="result"
-            .and_then(|v| v.as_object()) // Converts the value to an object
-            .and_then(|obj| obj.values().next()) // Retrieves the first value at the object
-            .and_then(|v| v.get("p")) // Retrives the value at key="p"
-            .and_then(|v| v.get(1)) // Retrives the value at index 1
-            .cloned() // Clones the value to avoid it being dropped after the function since it belongs to `json`
-            .ok_or("Failed to parse response from Kraken")?;
+        let ticker_data = json
+            .get("result")
+            .and_then(|v| v.as_object())
+            .and_then(|obj| obj.values().next())
+            .ok_or("Failed to locate Ticker data in Kraken response")?;
 
-        Ok(price)
+        let extract = |key: &str, index: usize| {
+            ticker_data
+                .get(key)
+                .and_then(|v| v.get(index))
+                .cloned()
+                .ok_or_else(|| format!("Failed to parse field {} at index {}", key, index))
+        };
+
+        let _ask = extract("a", 0)?;
+        let _bid = extract("b", 0)?;
+        let _last = extract("c", 0)?;
+        let vwap = extract("p", 1)?;
+        let _vol = extract("v", 1)?;
+
+        Ok(vwap)
     }
 }
