@@ -7,7 +7,7 @@ use worker::*;
 async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     Router::new()
         .get_async(
-            "/price",
+            "/v1/price",
             |req, _| async move { handlers::price(&req).await },
         )
         .run(req, env)
