@@ -23,7 +23,7 @@ impl Provider for Kraken {
             .and_then(|v| v.as_object()) // Converts the value to an object
             .and_then(|obj| obj.values().next()) // Retrieves the first value at the object
             .and_then(|v| v.get("p")) // Retrives the value at key="p"
-            .and_then(|v| v.get(0)) // Retrives the value at index 0
+            .and_then(|v| v.get(1)) // Retrives the value at index 1
             .cloned() // Clones the value to avoid it being dropped after the function since it belongs to `json`
             .ok_or("Failed to parse response from Kraken")?;
 
