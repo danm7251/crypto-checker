@@ -1,9 +1,9 @@
 use std::collections::HashMap;
-
 use worker::*;
 
+use crate::providers::{self, Provider};
+
 const SUPPORTED_FIAT: &[&str] = &["USD"];
-const UPSTREAM_PROVIDER: &str = "https://api.kraken.com/0/public/Ticker";
 
 pub async fn price(req: &Request) -> Result<Response> {
     // Extract query parameters from URL
@@ -15,18 +15,18 @@ pub async fn price(req: &Request) -> Result<Response> {
         None => return Response::error("Missing required parameter: coin", 400),
     };
 
-    let currency = match params.get("currency") {
-        Some(currency) => {
-            if !SUPPORTED_FIAT.contains(&currency.to_uppercase().as_str()) {
+    let fiat = match params.get("currency") {
+        Some(fiat) => {
+            if !SUPPORTED_FIAT.contains(&fiat.to_uppercase().as_str()) {
                 return Response::error("Unsupported currency", 400);
             }
-            currency
+            fiat
         }
         None => return Response::error("Missing required parameter: currency", 400),
     };
 
     // Construct upstream request
-    let uri = format!("{}?pair={}{}", UPSTREAM_PROVIDER, &coin, &currency);
+    let uri = providers::Kraken.url(coin, fiat);
 
     let headers = Headers::new();
     headers.set("Accept", "application/json")?;
@@ -34,9 +34,18 @@ pub async fn price(req: &Request) -> Result<Response> {
     let mut init = RequestInit::new();
     init.with_headers(headers);
 
-    let _request = Request::new_with_init(&uri, &init)?;
+    let request = Request::new_with_init(&uri, &init)?;
 
-    Response::error("Under development", 503)
+    // Fetch, parse and return response
+    let mut response = Fetch::Request(request).send().await?;
+
+    let body = response.text().await?;
+
+    let price = providers::Kraken.parse_response(&body)?;
+
+    Response::from_json(&serde_json::json!({
+        "price": price,
+    }))
 }
 
 // Parses a Request into a HashMap of query parameters
