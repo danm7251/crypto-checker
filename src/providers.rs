@@ -1,8 +1,16 @@
 use worker::Result;
 
+#[derive(Debug)]
+pub struct TickerData {
+    pub last: f64,
+    pub mid: f64,
+    pub vwap: f64,
+    pub vol: f64
+}
+
 pub trait Provider {
     fn url(&self, symbol: &str, fiat: &str) -> String;
-    fn parse_response(&self, body: &str) -> Result<serde_json::Value>;
+    fn parse_response(&self, body: &str) -> Result<TickerData>;
 }
 
 pub struct Kraken;
@@ -15,7 +23,7 @@ impl Provider for Kraken {
         )
     }
 
-    fn parse_response(&self, body: &str) -> Result<serde_json::Value> {
+    fn parse_response(&self, body: &str) -> Result<TickerData> {
         let json: serde_json::Value = serde_json::from_str(body)?;
 
         let ticker_data = json
@@ -28,16 +36,19 @@ impl Provider for Kraken {
             ticker_data
                 .get(key)
                 .and_then(|v| v.get(index))
-                .cloned()
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse::<f64>().ok())
                 .ok_or_else(|| format!("Failed to parse field {} at index {}", key, index))
         };
 
-        let _ask = extract("a", 0)?;
-        let _bid = extract("b", 0)?;
-        let _last = extract("c", 0)?;
+        let ask = extract("a", 0)?;
+        let bid = extract("b", 0)?;
+        let last = extract("c", 0)?;
         let vwap = extract("p", 1)?;
-        let _vol = extract("v", 1)?;
+        let vol = extract("v", 1)?;
 
-        Ok(vwap)
+        let mid = (ask + bid) / 2.0;
+
+        Ok(TickerData { last, mid, vwap, vol })
     }
 }

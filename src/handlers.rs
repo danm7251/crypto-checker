@@ -41,10 +41,13 @@ pub async fn price(req: &Request) -> Result<Response> {
 
     let body = response.text().await?;
 
-    let price = providers::Kraken.parse_response(&body)?;
+    let ticker_data = providers::Kraken.parse_response(&body)?;
 
     Response::from_json(&serde_json::json!({
-        "price": price,
+        "last": ticker_data.last,
+        "mid": ticker_data.mid,
+        "vwap": ticker_data.vwap,
+        "vol": ticker_data.vol
     }))
 }
 
