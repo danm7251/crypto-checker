@@ -1,4 +1,4 @@
-use worker::Result;
+use worker::{Fetch, Headers, Request, RequestInit, Result};
 
 #[derive(Debug)]
 pub struct TickerData {
@@ -11,6 +11,24 @@ pub struct TickerData {
 pub trait Provider {
     fn url(&self, symbol: &str, fiat: &str) -> String;
     fn parse_response(&self, body: &str) -> Result<TickerData>;
+
+    async fn fetch_data(&self, coin: &str, fiat: &str) -> Result<TickerData> {
+        let uri = self.url(coin, fiat);
+
+        let headers = Headers::new();
+        headers.set("Accept", "application/json")?;
+
+        let mut init = RequestInit::new();
+        init.with_headers(headers);
+
+        let request = Request::new_with_init(&uri, &init)?;
+
+        let mut response = Fetch::Request(request).send().await?;
+
+        let body = response.text().await?;
+
+        self.parse_response(&body)
+    }
 }
 
 pub struct Kraken;

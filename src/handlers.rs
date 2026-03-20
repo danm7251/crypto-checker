@@ -25,23 +25,7 @@ pub async fn price(req: &Request) -> Result<Response> {
         None => return Response::error("Missing required parameter: currency", 400),
     };
 
-    // Construct upstream request
-    let uri = providers::Kraken.url(coin, fiat);
-
-    let headers = Headers::new();
-    headers.set("Accept", "application/json")?;
-
-    let mut init = RequestInit::new();
-    init.with_headers(headers);
-
-    let request = Request::new_with_init(&uri, &init)?;
-
-    // Fetch, parse and return response
-    let mut response = Fetch::Request(request).send().await?;
-
-    let body = response.text().await?;
-
-    let ticker_data = providers::Kraken.parse_response(&body)?;
+    let ticker_data = providers::Kraken.fetch_data(coin, fiat).await?;
 
     Response::from_json(&serde_json::json!({
         "last": ticker_data.last,
