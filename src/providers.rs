@@ -13,9 +13,46 @@ pub trait Provider {
     fn parse_response(&self, body: &str) -> Result<TickerData>;
 }
 
+pub struct Binance;
 pub struct Bitstamp;
 pub struct CoinbaseExchange;
 pub struct Kraken;
+
+impl Provider for Binance {
+    fn url(&self, symbol: &str, _fiat: &str) -> String {
+        format!(
+            "https://api.binance.com/api/v3/ticker/24hr?symbol={}USDT",
+            symbol
+        )
+    }
+
+    fn parse_response(&self, body: &str) -> Result<TickerData> {
+        let json: serde_json::Value = serde_json::from_str(body)?;
+
+        let extract = |key: &str| {
+            json
+                .get(key)
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse::<f64>().ok())
+                .ok_or_else(|| format!("Failed to parse field {} in response from {}", key, self.url("<pair>", "")))
+        };
+
+        let ask = extract("askPrice")?;
+        let bid = extract("bidPrice")?;
+        let last = extract("lastPrice")?;
+        let vwap = extract("weightedAvgPrice")?;
+        let vol = extract("volume")?;
+
+        let mid = (ask + bid) / 2.0;
+
+        Ok(TickerData {
+            last: Some(last),
+            mid: Some(mid),
+            vwap: Some(vwap),
+            vol: Some(vol) 
+        })
+    }
+}
 
 impl Provider for Bitstamp {
     fn url(&self, symbol: &str, fiat: &str) -> String {

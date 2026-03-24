@@ -26,7 +26,7 @@ pub async fn price(req: &Request) -> Result<Response> {
     };
 
     // Construct upstream request
-    let uri = providers::Kraken.url(coin, fiat);
+    let uri = providers::CoinbaseExchange.url(coin, fiat);
 
     let headers = Headers::new();
     headers.set("Accept", "application/json")?;
@@ -41,7 +41,7 @@ pub async fn price(req: &Request) -> Result<Response> {
 
     let body = response.text().await?;
 
-    let ticker_data = providers::Kraken.parse_response(&body)?;
+    let ticker_data = providers::CoinbaseExchange.parse_response(&body)?;
 
     Response::from_json(&serde_json::json!({
         "last": ticker_data.last,
