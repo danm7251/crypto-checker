@@ -1,6 +1,9 @@
 mod handlers;
 mod providers;
 
+#[cfg(test)]
+mod providers_test;
+
 use worker::*;
 
 #[event(fetch)]
