@@ -1,16 +1,15 @@
 use worker::Result;
 
-#[derive(Debug)]
-pub struct TickerData {
-    pub last: Option<f64>,
-    pub mid: Option<f64>,
-    pub vwap: Option<f64>,
-    pub vol: Option<f64>
-}
+pub const ALL_PROVIDERS: &[&dyn Provider] = &[
+    &Binance,
+    &Bitstamp,
+    &CoinbaseExchange,
+    &Kraken,
+];
 
 pub trait Provider {
     fn url(&self, symbol: &str, fiat: &str) -> String;
-    fn parse_response(&self, body: &str) -> Result<TickerData>;
+    fn parse_response(&self, body: &str) -> Result<f64>;
 }
 
 pub struct Binance;
@@ -26,7 +25,7 @@ impl Provider for Binance {
         )
     }
 
-    fn parse_response(&self, body: &str) -> Result<TickerData> {
+    fn parse_response(&self, body: &str) -> Result<f64> {
         let json: serde_json::Value = serde_json::from_str(body)?;
 
         let extract = |key: &str| {
@@ -39,18 +38,9 @@ impl Provider for Binance {
 
         let ask = extract("askPrice")?;
         let bid = extract("bidPrice")?;
-        let last = extract("lastPrice")?;
-        let vwap = extract("weightedAvgPrice")?;
-        let vol = extract("volume")?;
-
         let mid = (ask + bid) / 2.0;
 
-        Ok(TickerData {
-            last: Some(last),
-            mid: Some(mid),
-            vwap: Some(vwap),
-            vol: Some(vol) 
-        })
+        Ok(mid)
     }
 }
 
@@ -62,7 +52,7 @@ impl Provider for Bitstamp {
         )
     }
 
-    fn parse_response(&self, body: &str) -> Result<TickerData> {
+    fn parse_response(&self, body: &str) -> Result<f64> {
         let json: serde_json::Value = serde_json::from_str(body)?;
 
         let extract = |key: &str| {
@@ -75,18 +65,9 @@ impl Provider for Bitstamp {
 
         let ask = extract("ask")?;
         let bid = extract("bid")?;
-        let last = extract("last")?;
-        let vwap = extract("vwap")?;
-        let vol = extract("volume")?;
-
         let mid = (ask + bid) / 2.0;
 
-        Ok(TickerData {
-            last: Some(last),
-            mid: Some(mid),
-            vwap: Some(vwap),
-            vol: Some(vol) 
-        })
+        Ok(mid)
     }
 }
 
@@ -99,7 +80,7 @@ impl Provider for CoinbaseExchange {
         )
     }
 
-    fn parse_response(&self, body: &str) -> Result<TickerData> {
+    fn parse_response(&self, body: &str) -> Result<f64> {
         let json: serde_json::Value = serde_json::from_str(body)?;
 
         let extract = |key: &str| {
@@ -112,16 +93,9 @@ impl Provider for CoinbaseExchange {
 
         let ask = extract("ask")?;
         let bid = extract("bid")?;
-        let vol = extract("volume")?;
-
         let mid = (ask + bid) / 2.0;
 
-        Ok(TickerData {
-            last: None,
-            mid: Some(mid),
-            vwap: None,
-            vol: Some(vol) 
-        })
+        Ok(mid)
     }
 }
 
@@ -133,7 +107,7 @@ impl Provider for Kraken {
         )
     }
 
-    fn parse_response(&self, body: &str) -> Result<TickerData> {
+    fn parse_response(&self, body: &str) -> Result<f64> {
         let json: serde_json::Value = serde_json::from_str(body)?;
 
         let ticker_data = json
@@ -153,17 +127,8 @@ impl Provider for Kraken {
 
         let ask = extract("a", 0)?;
         let bid = extract("b", 0)?;
-        let last = extract("c", 0)?;
-        let vwap = extract("p", 1)?;
-        let vol = extract("v", 1)?;
-
         let mid = (ask + bid) / 2.0;
 
-        Ok(TickerData {
-            last: Some(last),
-            mid: Some(mid),
-            vwap: Some(vwap),
-            vol: Some(vol) 
-        })
+        Ok(mid)
     }
 }
