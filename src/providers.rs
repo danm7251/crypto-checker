@@ -16,6 +16,7 @@ pub struct Binance;
 pub struct Bitstamp;
 pub struct CoinbaseExchange;
 pub struct Kraken;
+pub struct OKX;
 
 impl Provider for Binance {
     fn url(&self, symbol: &str, _fiat: &str) -> String {
@@ -114,7 +115,7 @@ impl Provider for Kraken {
             .get("result")
             .and_then(|v| v.as_object())
             .and_then(|obj| obj.values().next())
-            .ok_or("Failed to locate Ticker data in Kraken response")?;
+            .ok_or("Failed to locate ticker data in Kraken response")?;
 
         let extract = |key: &str, index: usize| {
             ticker_data
@@ -127,6 +128,38 @@ impl Provider for Kraken {
 
         let ask = extract("a", 0)?;
         let bid = extract("b", 0)?;
+        let mid = (ask + bid) / 2.0;
+
+        Ok(mid)
+    }
+}
+
+impl Provider for OKX {
+    fn url(&self, symbol: &str, fiat: &str) -> String {
+        format!(
+            "https://eea.okx.com/api/v5/market/ticker?instId={}-USDT",
+            symbol.to_uppercase()
+        )
+    }
+
+    fn parse_response(&self, body: &str) -> Result<f64> {
+        let json: serde_json::Value = serde_json::from_str(body)?;
+
+        let ticker_data = json
+            .get("data")
+            .and_then(|v| v.get(0))
+            .ok_or("Failed to locate ticker data in OKX response")?;
+
+        let extract = |key: &str| {
+            ticker_data
+                .get(key)
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse::<f64>().ok())
+                .ok_or_else(|| format!("Failed to parse field {} in response from {}", key, self.url("<pair>", "")))
+        };
+
+        let ask = extract("askPx")?;
+        let bid = extract("bidPx")?;
         let mid = (ask + bid) / 2.0;
 
         Ok(mid)

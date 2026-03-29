@@ -121,7 +121,39 @@ fn test_json_mapping() {
                 }
             }"#
         },
+        TestCase {
+            name: "OKX",
+            provider: Box::new(OKX),
+            input: r#"{
+                "code": "0",
+                "msg": "",
+                "data": [
+                    {
+                        "instType": "SPOT",
+                        "instId": "BTC-USDT",
+                        "last": "66256.8",
+                        "lastSz": "0.0000152",
+                        "askPx": "66260.3",
+                        "askSz": "0.22152927",
+                        "bidPx": "66260.2",
+                        "bidSz": "0.43439376",
+                        "open24h": "66724.9",
+                        "high24h": "67124.6",
+                        "low24h": "66159.7",
+                        "volCcy24h": "204987308.1880515",
+                        "vol24h": "3074.77151423",
+                        "ts": "1774805577108",
+                        "sodUtc0": "66369",
+                        "sodUtc8": "66526.2"
+                    }
+                ]
+            }"#
+        }
     ];
+
+    if cases.len() < ALL_PROVIDERS.len() {
+        panic!("[!] ERROR: Not all providers covered!")
+    }
 
     for case in cases {
         if let Err(e) = case.provider.parse_response(case.input) {
