@@ -10,12 +10,23 @@ pub const ALL_PROVIDERS: &[&dyn Provider] = &[
 pub trait Provider {
     fn url(&self, symbol: &str, fiat: &str) -> String;
     fn parse_response(&self, body: &str) -> Result<f64>;
+
+    // [!] Will be used in unit tests to ensure all production providers are covered.
+    #[cfg(test)]
+    #[allow(dead_code)]
+    fn type_id(&self) -> std::any::TypeId {
+        todo!()
+    }
 }
 
+// Finished
 pub struct Binance;
 pub struct Bitstamp;
 pub struct CoinbaseExchange;
 pub struct Kraken;
+
+// Under development
+#[allow(dead_code)]
 pub struct OKX;
 
 impl Provider for Binance {
@@ -134,8 +145,9 @@ impl Provider for Kraken {
     }
 }
 
+#[allow(dead_code)]
 impl Provider for OKX {
-    fn url(&self, symbol: &str, fiat: &str) -> String {
+    fn url(&self, symbol: &str, _fiat: &str) -> String {
         format!(
             "https://eea.okx.com/api/v5/market/ticker?instId={}-USDT",
             symbol.to_uppercase()
