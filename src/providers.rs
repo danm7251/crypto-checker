@@ -8,7 +8,7 @@ pub const ALL_PROVIDERS: &[&dyn Provider] = &[
 ];
 
 pub trait Provider {
-    fn url(&self, symbol: &str, fiat: &str) -> String;
+    fn url(&self, symbol: &str) -> String;
     fn parse_response(&self, body: &str) -> Result<f64>;
 
     // [!] Will be used in unit tests to ensure all production providers are covered.
@@ -30,7 +30,7 @@ pub struct Kraken;
 pub struct OKX;
 
 impl Provider for Binance {
-    fn url(&self, symbol: &str, _fiat: &str) -> String {
+    fn url(&self, symbol: &str) -> String {
         format!(
             "https://api.binance.com/api/v3/ticker/24hr?symbol={}USDT",
             symbol
@@ -45,7 +45,7 @@ impl Provider for Binance {
                 .get(key)
                 .and_then(|v| v.as_str())
                 .and_then(|s| s.parse::<f64>().ok())
-                .ok_or_else(|| format!("Failed to parse field {} in response from {}", key, self.url("<pair>", "")))
+                .ok_or_else(|| format!("Failed to parse field {} in response from {}", key, self.url("<symbol>")))
         };
 
         let ask = extract("askPrice")?;
@@ -57,10 +57,10 @@ impl Provider for Binance {
 }
 
 impl Provider for Bitstamp {
-    fn url(&self, symbol: &str, fiat: &str) -> String {
+    fn url(&self, symbol: &str) -> String {
         format!(
-            "https://www.bitstamp.net/api/v2/ticker/{}{}/",
-            symbol, fiat
+            "https://www.bitstamp.net/api/v2/ticker/{}USD/",
+            symbol
         )
     }
 
@@ -72,7 +72,7 @@ impl Provider for Bitstamp {
                 .get(key)
                 .and_then(|v| v.as_str())
                 .and_then(|s| s.parse::<f64>().ok())
-                .ok_or_else(|| format!("Failed to parse field {} in response from {}", key, self.url("<pair>", "")))
+                .ok_or_else(|| format!("Failed to parse field {} in response from {}", key, self.url("<symbol>")))
         };
 
         let ask = extract("ask")?;
@@ -84,11 +84,11 @@ impl Provider for Bitstamp {
 }
 
 impl Provider for CoinbaseExchange {
-    fn url(&self, symbol: &str, fiat: &str) -> String {
+    fn url(&self, symbol: &str) -> String {
         format!(
-            "https://api.exchange.coinbase.com/products/{}-{}/ticker",
+            "https://api.exchange.coinbase.com/products/{}-USD/ticker",
             // Coinase Exchange only accepts capitalised symbols.
-            symbol.to_uppercase(), fiat.to_uppercase()
+            symbol.to_uppercase()
         )
     }
 
@@ -100,7 +100,7 @@ impl Provider for CoinbaseExchange {
                 .get(key)
                 .and_then(|v| v.as_str())
                 .and_then(|s| s.parse::<f64>().ok())
-                .ok_or_else(|| format!("Failed to parse field {} in response from {}", key, self.url("<pair>", "")))
+                .ok_or_else(|| format!("Failed to parse field {} in response from {}", key, self.url("<symbol>")))
         };
 
         let ask = extract("ask")?;
@@ -112,10 +112,10 @@ impl Provider for CoinbaseExchange {
 }
 
 impl Provider for Kraken {
-    fn url(&self, symbol: &str, fiat: &str) -> String {
+    fn url(&self, symbol: &str) -> String {
         format!(
-            "https://api.kraken.com/0/public/Ticker?pair={}{}",
-            symbol, fiat
+            "https://api.kraken.com/0/public/Ticker?pair={}USD",
+            symbol
         )
     }
 
@@ -134,7 +134,7 @@ impl Provider for Kraken {
                 .and_then(|v| v.get(index))
                 .and_then(|v| v.as_str())
                 .and_then(|s| s.parse::<f64>().ok())
-                .ok_or_else(|| format!("Failed to parse field {} at index {} in response from {}", key, index, self.url("<pair>", "")))
+                .ok_or_else(|| format!("Failed to parse field {} at index {} in response from {}", key, index, self.url("<symbol>")))
         };
 
         let ask = extract("a", 0)?;
@@ -147,7 +147,7 @@ impl Provider for Kraken {
 
 #[allow(dead_code)]
 impl Provider for OKX {
-    fn url(&self, symbol: &str, _fiat: &str) -> String {
+    fn url(&self, symbol: &str) -> String {
         format!(
             "https://eea.okx.com/api/v5/market/ticker?instId={}-USDT",
             symbol.to_uppercase()
@@ -167,7 +167,7 @@ impl Provider for OKX {
                 .get(key)
                 .and_then(|v| v.as_str())
                 .and_then(|s| s.parse::<f64>().ok())
-                .ok_or_else(|| format!("Failed to parse field {} in response from {}", key, self.url("<pair>", "")))
+                .ok_or_else(|| format!("Failed to parse field {} in response from {}", key, self.url("<symbol>")))
         };
 
         let ask = extract("askPx")?;

@@ -15,7 +15,8 @@
             None => return Response::error("Missing required parameter: coin", 400),
         };
 
-        let fiat = match params.get("currency") {
+        // [!] Currently unnecessary
+        let _fiat = match params.get("currency") {
             Some(fiat) => {
                 if !SUPPORTED_FIAT.contains(&fiat.to_uppercase().as_str()) {
                     return Response::error("Unsupported currency", 400);
@@ -25,7 +26,7 @@
             None => return Response::error("Missing required parameter: currency", 400),
         };
 
-        let raw_results: Vec<Result<f64>> = serial_fetch(ALL_PROVIDERS, coin, fiat).await;
+        let raw_results: Vec<Result<f64>> = serial_fetch(ALL_PROVIDERS, coin).await;
 
         let (avg_price, sources) = calculate_result(&raw_results);
 
@@ -51,18 +52,18 @@ fn calculate_result(results: &[Result<f64>]) -> (f64, u8) {
     (avg_price, sources)
 }
 
-async fn serial_fetch(providers: &[&dyn Provider], symbol: &str, fiat: &str) -> Vec<Result<f64>> {
+async fn serial_fetch(providers: &[&dyn Provider], symbol: &str) -> Vec<Result<f64>> {
     let mut results = Vec::<Result<f64>>::new();
     
     for provider in providers {
-        results.push(fetch_response(*provider, symbol, fiat).await);
+        results.push(fetch_response(*provider, symbol).await);
     }
 
     results
 }
 
-async fn fetch_response(provider: &dyn Provider, symbol: &str, fiat: &str) -> Result<f64> {
-    let uri = provider.url(symbol, fiat);
+async fn fetch_response(provider: &dyn Provider, symbol: &str) -> Result<f64> {
+    let uri = provider.url(symbol);
 
     let headers = Headers::new();
     headers.set("Accept", "application/json")?;
