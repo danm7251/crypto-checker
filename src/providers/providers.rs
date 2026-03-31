@@ -7,7 +7,7 @@ pub const ALL_PROVIDERS: &[&dyn Provider] = &[
     &Kraken,
 ];
 
-pub trait Provider {
+pub trait Provider: 'static {
     fn url(&self, symbol: &str) -> String;
     fn parse_response(&self, body: &str) -> Result<f64>;
 
@@ -15,7 +15,7 @@ pub trait Provider {
     #[cfg(test)]
     #[allow(dead_code)]
     fn type_id(&self) -> std::any::TypeId {
-        todo!()
+        std::any::TypeId::of::<Self>()
     }
 }
 
