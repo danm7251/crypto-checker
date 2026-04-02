@@ -1,3 +1,5 @@
+use std::{any::TypeId, collections::HashSet};
+
 use crate::providers::*;
 
 // Checks that parsing is successful for each providers standard JSON response
@@ -151,8 +153,19 @@ fn test_json_mapping() {
         }
     ];
 
-    if cases.len() < ALL_PROVIDERS.len() {
-        panic!("[!] ERROR: Not all providers covered!")
+    let covered: HashSet<TypeId> = cases
+        .iter()
+        .map(|case| case.provider.type_id())
+        .collect();
+
+    let missing: Vec<&str> = ALL_PROVIDERS
+        .iter()
+        .filter(|p| !covered.contains(&p.type_id()))
+        .map(|p| p.name())
+        .collect();
+
+    if !missing.is_empty() {
+        panic!("[!] ERROR: Missing test cases for: {:?}", missing);
     }
 
     for case in cases {

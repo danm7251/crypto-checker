@@ -5,17 +5,22 @@ pub const ALL_PROVIDERS: &[&dyn Provider] = &[
     &Bitstamp,
     &CoinbaseExchange,
     &Kraken,
+    &OKX,
 ];
 
 pub trait Provider: 'static {
     fn url(&self, symbol: &str) -> String;
     fn parse_response(&self, body: &str) -> Result<f64>;
 
-    // [!] Will be used in unit tests to ensure all production providers are covered.
+    // Test helpers
     #[cfg(test)]
-    #[allow(dead_code)]
     fn type_id(&self) -> std::any::TypeId {
         std::any::TypeId::of::<Self>()
+    }
+
+    #[cfg(test)]
+    fn name(&self) -> &str {
+        std::any::type_name::<Self>()
     }
 }
 
@@ -26,7 +31,6 @@ pub struct CoinbaseExchange;
 pub struct Kraken;
 
 // Under development
-#[allow(dead_code)]
 pub struct OKX;
 
 impl Provider for Binance {
