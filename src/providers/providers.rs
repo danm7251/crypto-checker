@@ -3,7 +3,9 @@ use worker::Result;
 pub const ALL_PROVIDERS: &[&dyn Provider] = &[
     &Binance,
     &Bitstamp,
+    &Bybit,
     &CoinbaseExchange,
+    &Gate,
     &Kraken,
     &OKX,
 ];
@@ -24,13 +26,12 @@ pub trait Provider: 'static {
     }
 }
 
-// Finished
 pub struct Binance;
 pub struct Bitstamp;
+pub struct Bybit;
 pub struct CoinbaseExchange;
+pub struct Gate;
 pub struct Kraken;
-
-// Under development
 pub struct OKX;
 
 impl Provider for Binance {
@@ -87,6 +88,40 @@ impl Provider for Bitstamp {
     }
 }
 
+impl Provider for Bybit {
+    fn url(&self, symbol: &str) -> String {
+        // Only supports USDT
+        format!(
+            "https://api.bybit.com/v5/market/tickers?category=spot&symbol={}USDT",
+            symbol.to_uppercase()
+        )
+    }
+
+    fn parse_response(&self, body: &str) -> Result<f64> {
+        let json: serde_json::Value = serde_json::from_str(body)?;
+
+        let ticker_data = json
+            .get("result")
+            .and_then(|v| v.get("list"))
+            .and_then(|v| v.get(0))
+            .ok_or("Failed to locate ticker data in Bybit response")?;
+
+        let extract = |key: &str| {
+            ticker_data
+                .get(key)
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse::<f64>().ok())
+                .ok_or_else(|| format!("Failed to parse field {} in response from {}", key, self.url("<symbol>")))
+        };
+
+        let ask = extract("ask1Price")?;
+        let bid = extract("bid1Price")?;
+        let mid = (ask + bid) / 2.0;
+
+        Ok(mid)
+    }
+}
+
 impl Provider for CoinbaseExchange {
     fn url(&self, symbol: &str) -> String {
         format!(
@@ -109,6 +144,38 @@ impl Provider for CoinbaseExchange {
 
         let ask = extract("ask")?;
         let bid = extract("bid")?;
+        let mid = (ask + bid) / 2.0;
+
+        Ok(mid)
+    }
+}
+
+impl Provider for Gate {
+    fn url(&self, symbol: &str) -> String {
+        // Only supports USDT
+        format!(
+            "https://api.gateio.ws/api/v4/spot/tickers?currency_pair={}_USDT",
+            symbol.to_uppercase()
+        )
+    }
+
+    fn parse_response(&self, body: &str) -> Result<f64> {
+        let json: serde_json::Value = serde_json::from_str(body)?;
+
+        let ticker_data = json
+            .get(0)
+            .ok_or("Failed to locate ticker data in Gate response")?;
+
+        let extract = |key: &str| {
+            ticker_data
+                .get(key)
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse::<f64>().ok())
+                .ok_or_else(|| format!("Failed to parse field {} in response from {}", key, self.url("<symbol>")))
+        };
+
+        let ask = extract("lowest_ask")?;
+        let bid = extract("highest_bid")?;
         let mid = (ask + bid) / 2.0;
 
         Ok(mid)
@@ -149,7 +216,6 @@ impl Provider for Kraken {
     }
 }
 
-#[allow(dead_code)]
 impl Provider for OKX {
     fn url(&self, symbol: &str) -> String {
         format!(

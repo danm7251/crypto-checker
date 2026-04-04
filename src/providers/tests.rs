@@ -63,6 +63,35 @@ fn test_json_mapping() {
             }"#
         },
         TestCase {
+            name: "Bybit",
+            provider: Box::new(Bybit),
+            input: r#"{
+                "retCode": 0,
+                "retMsg": "OK",
+                "result": {
+                    "category": "spot",
+                    "list": [
+                        {
+                            "symbol": "BTCUSDT",
+                            "bid1Price": "66782.2",
+                            "bid1Size": "0.463827",
+                            "ask1Price": "66782.3",
+                            "ask1Size": "1.215596",
+                            "lastPrice": "66782.2",
+                            "prevPrice24h": "66787.8",
+                            "price24hPcnt": "-0.0001",
+                            "highPrice24h": "67384.1",
+                            "lowPrice24h": "66281.9",
+                            "turnover24h": "344828352.73575856",
+                            "volume24h": "5159.246799"
+                        }
+                    ]
+                },
+                "retExtInfo": {},
+                "time": 1775239921132
+            }"#
+        },
+        TestCase {
             name: "Coinbase Exchange",
             provider: Box::new(CoinbaseExchange),
             input: r#"{
@@ -76,6 +105,25 @@ fn test_json_mapping() {
                 "rfq_volume": "123.122",
                 "conversions_volume": "0.00"
             }"#
+        },
+        TestCase {
+            name: "Gate",
+            provider: Box::new(Gate),
+            input: r#"[
+                {
+                    "currency_pair": "BTC_USDT",
+                    "last": "66958.7",
+                    "lowest_ask": "66959",
+                    "lowest_size": "9.160064",
+                    "highest_bid": "66958.9",
+                    "highest_size": "2.875639",
+                    "change_percentage": "0.18",
+                    "base_volume": "5039.281754",
+                    "quote_volume": "336709375.7657289",
+                    "high_24h": "67352.7",
+                    "low_24h": "66284"
+                }
+            ]"#
         },
         TestCase {
             name: "Kraken",
@@ -165,12 +213,12 @@ fn test_json_mapping() {
         .collect();
 
     if !missing.is_empty() {
-        panic!("[!] ERROR: Missing test cases for: {:?}", missing);
+        panic!("\n\x1b[31m[!] ERROR: Missing test cases for: {:?}\x1b[0m\n", missing);
     }
 
     for case in cases {
         if let Err(e) = case.provider.parse_response(case.input) {
-            panic!("\n[!] ERROR:\n\tCase = {}\n\t{}\n", case.name, e)
+            panic!("\n\x1b[31m[!] ERROR: Case = {}\n\t{}\n\x1b[0m\n", case.name, e)
         }
     }
 }
