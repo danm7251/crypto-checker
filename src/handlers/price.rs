@@ -1,4 +1,5 @@
     use std::collections::HashMap;
+    use futures::future::join_all;
     use worker::*;
 
     use crate::providers::{ALL_PROVIDERS, Provider};
@@ -41,6 +42,8 @@ fn calculate_result(results: &[Result<f64>]) -> (f64, u8) {
     let mut sources = 0;
 
     for result in results {
+        console_log!("{:?}", result);
+
         if let Ok(price) = result {
             total_price += price;
             sources += 1;
@@ -50,6 +53,15 @@ fn calculate_result(results: &[Result<f64>]) -> (f64, u8) {
     let avg_price = total_price / sources as f64;
 
     (avg_price, sources)
+}
+
+#[allow(dead_code)]
+async fn parallel_fetch(providers: &[&dyn Provider], symbol: &str) -> Vec<Result<f64>> {
+    let futures = providers
+        .iter()
+        .map(|&p| fetch_response(p, symbol)); 
+
+    join_all(futures).await
 }
 
 async fn serial_fetch(providers: &[&dyn Provider], symbol: &str) -> Vec<Result<f64>> {
