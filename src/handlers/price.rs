@@ -28,7 +28,7 @@ pub async fn price(req: &Request) -> Result<Response> {
         None => return Response::error("Missing required parameter: currency", 400),
     };
 
-    let raw_results: Vec<Result<f64>> = serial_fetch(ALL_PROVIDERS, coin).await;
+    let raw_results: Vec<Result<f64>> = parallel_fetch(ALL_PROVIDERS, coin).await;
 
     match calculate_result(&raw_results) {
         Ok((avg_price, sources)) => {
@@ -65,7 +65,6 @@ fn calculate_result(results: &[Result<f64>]) -> Result<(f64, u8)> {
     Ok((avg_price, sources))
 }
 
-#[allow(dead_code)]
 async fn parallel_fetch(providers: &[&dyn Provider], symbol: &str) -> Vec<Result<f64>> {
     let futures = providers
         .iter()
@@ -74,6 +73,7 @@ async fn parallel_fetch(providers: &[&dyn Provider], symbol: &str) -> Vec<Result
     join_all(futures).await
 }
 
+#[allow(dead_code)]
 async fn serial_fetch(providers: &[&dyn Provider], symbol: &str) -> Vec<Result<f64>> {
     let mut results = Vec::<Result<f64>>::new();
     
