@@ -4,6 +4,7 @@ use worker::*;
 
 use crate::providers::{ALL_PROVIDERS, Provider};
 
+const MIN_SOURCES: u8 = 2;
 const SUPPORTED_FIAT: &[&str] = &["USD"];
 
 pub async fn price(req: &Request) -> Result<Response> {
@@ -29,15 +30,20 @@ pub async fn price(req: &Request) -> Result<Response> {
 
     let raw_results: Vec<Result<f64>> = serial_fetch(ALL_PROVIDERS, coin).await;
 
-    let (avg_price, sources) = calculate_result(&raw_results);
-
-    Response::from_json(&serde_json::json!({
-        "average_price": avg_price,
-        "sources": sources,
-    }))
+    match calculate_result(&raw_results) {
+        Ok((avg_price, sources)) => {
+            Response::from_json(&serde_json::json!({
+                "average_price": avg_price,
+                "sources": sources,
+            }))      
+        },
+        Err(e) => {
+            Response::error(format!("{}", e), 503)
+        }
+    }
 }
 
-fn calculate_result(results: &[Result<f64>]) -> (f64, u8) {
+fn calculate_result(results: &[Result<f64>]) -> Result<(f64, u8)> {
     let mut total_price = 0.0;
     let mut sources = 0;
 
@@ -50,9 +56,13 @@ fn calculate_result(results: &[Result<f64>]) -> (f64, u8) {
         }
     }
 
+    if sources <= MIN_SOURCES {
+        return Err("Insufficient sources".into());
+    }
+
     let avg_price = total_price / sources as f64;
 
-    (avg_price, sources)
+    Ok((avg_price, sources))
 }
 
 #[allow(dead_code)]
