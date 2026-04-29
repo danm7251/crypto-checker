@@ -7,7 +7,7 @@ use crate::providers::{ALL_PROVIDERS, Provider};
 const MIN_SOURCES: u8 = 2;
 const SUPPORTED_FIAT: &[&str] = &["USD"];
 
-pub async fn price(req: &Request) -> Result<Response> {
+pub async fn price(req: &Request, env: &Env) -> Result<Response> {
     // Extract query parameters from URL
     let params = query_params(req)?;
 
@@ -28,14 +28,28 @@ pub async fn price(req: &Request) -> Result<Response> {
         None => return Response::error("Missing required parameter: currency", 400),
     };
 
-    let raw_results: Vec<Result<f64>> = parallel_fetch(ALL_PROVIDERS, coin).await;
+    let raw_results: Vec<Result<ResponseData>> = parallel_fetch(ALL_PROVIDERS, coin).await;
+
+    let debug = env.var("DEBUG").map(|v| v.to_string() == "true").unwrap_or(false);
 
     match calculate_result(&raw_results) {
         Ok((avg_price, sources)) => {
-            Response::from_json(&serde_json::json!({
+            let mut json = serde_json::json!({
                 "average_price": avg_price,
                 "sources": sources,
-            }))      
+            });
+
+            if debug {
+                let timings: serde_json::Map<String, serde_json::Value> = raw_results
+                    .iter()
+                    .filter_map(|r| r.as_ref().ok())
+                    .map(|r| (r.name.to_string(), serde_json::json!(format!("{}ms", r.elapsed_ms))))
+                    .collect();
+
+                json["debug"] = serde_json::Value::Object(timings);
+            }
+
+            Response::from_json(&json)
         },
         Err(e) => {
             Response::error(format!("{}", e), 503)
@@ -43,15 +57,13 @@ pub async fn price(req: &Request) -> Result<Response> {
     }
 }
 
-fn calculate_result(results: &[Result<f64>]) -> Result<(f64, u8)> {
+fn calculate_result(results: &[Result<ResponseData>]) -> Result<(f64, u8)> {
     let mut total_price = 0.0;
     let mut sources = 0;
 
     for result in results {
-        console_log!("{:?}", result);
-
-        if let Ok(price) = result {
-            total_price += price;
+        if let Ok(response_data) = result {
+            total_price += response_data.price;
             sources += 1;
         }
     }
@@ -65,7 +77,7 @@ fn calculate_result(results: &[Result<f64>]) -> Result<(f64, u8)> {
     Ok((avg_price, sources))
 }
 
-async fn parallel_fetch(providers: &[&dyn Provider], symbol: &str) -> Vec<Result<f64>> {
+async fn parallel_fetch(providers: &[&dyn Provider], symbol: &str) -> Vec<Result<ResponseData>> {
     let futures = providers
         .iter()
         .map(|&p| fetch_response(p, symbol)); 
@@ -73,18 +85,14 @@ async fn parallel_fetch(providers: &[&dyn Provider], symbol: &str) -> Vec<Result
     join_all(futures).await
 }
 
-#[allow(dead_code)]
-async fn serial_fetch(providers: &[&dyn Provider], symbol: &str) -> Vec<Result<f64>> {
-    let mut results = Vec::<Result<f64>>::new();
-    
-    for provider in providers {
-        results.push(fetch_response(*provider, symbol).await);
-    }
-
-    results
+#[derive(Debug)]
+struct ResponseData {
+    name: &'static str,
+    price: f64,
+    elapsed_ms: u64,   
 }
 
-async fn fetch_response(provider: &dyn Provider, symbol: &str) -> Result<f64> {
+async fn fetch_response(provider: &dyn Provider, symbol: &str) -> Result<ResponseData> {
     let uri = provider.url(symbol);
 
     let headers = Headers::new();
@@ -94,12 +102,18 @@ async fn fetch_response(provider: &dyn Provider, symbol: &str) -> Result<f64> {
     init.with_headers(headers);
 
     let request = Request::new_with_init(&uri, &init)?;
-
+    let start_time = worker::Date::now().as_millis();
     let mut response = Fetch::Request(request).send().await?;
+    let elapsed_ms = worker::Date::now().as_millis() - start_time;
 
     let body = response.text().await?;
+    let price = provider.parse_response(&body)?;
 
-    provider.parse_response(&body)
+    Ok(ResponseData {
+        name: provider.name(),
+        price,
+        elapsed_ms
+    })
 }
 
 // Parses a Request into a HashMap of query parameters

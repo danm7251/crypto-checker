@@ -11,6 +11,7 @@ pub const ALL_PROVIDERS: &[&dyn Provider] = &[
 ];
 
 pub trait Provider: 'static {
+    fn name(&self) -> &'static str;
     fn url(&self, symbol: &str) -> String;
     fn parse_response(&self, body: &str) -> Result<f64>;
 
@@ -18,11 +19,6 @@ pub trait Provider: 'static {
     #[cfg(test)]
     fn type_id(&self) -> std::any::TypeId {
         std::any::TypeId::of::<Self>()
-    }
-
-    #[cfg(test)]
-    fn name(&self) -> &str {
-        std::any::type_name::<Self>()
     }
 }
 
@@ -35,6 +31,8 @@ pub struct Kraken;
 pub struct OKX;
 
 impl Provider for Binance {
+    fn name(&self) -> &'static str { "Binance" }
+
     fn url(&self, symbol: &str) -> String {
         format!(
             "https://api.binance.com/api/v3/ticker/24hr?symbol={}USDT",
@@ -62,6 +60,8 @@ impl Provider for Binance {
 }
 
 impl Provider for Bitstamp {
+    fn name(&self) -> &'static str { "Bitstamp" }
+
     fn url(&self, symbol: &str) -> String {
         format!(
             "https://www.bitstamp.net/api/v2/ticker/{}USD/",
@@ -89,6 +89,8 @@ impl Provider for Bitstamp {
 }
 
 impl Provider for Bybit {
+    fn name(&self) -> &'static str { "Bybit" }
+
     fn url(&self, symbol: &str) -> String {
         // Only supports USDT
         format!(
@@ -123,6 +125,8 @@ impl Provider for Bybit {
 }
 
 impl Provider for CoinbaseExchange {
+    fn name(&self) -> &'static str { "Coinbase Exchange" }
+
     fn url(&self, symbol: &str) -> String {
         format!(
             "https://api.exchange.coinbase.com/products/{}-USD/ticker",
@@ -151,6 +155,8 @@ impl Provider for CoinbaseExchange {
 }
 
 impl Provider for Gate {
+    fn name(&self) -> &'static str { "Gate" }
+
     fn url(&self, symbol: &str) -> String {
         // Only supports USDT
         format!(
@@ -183,6 +189,8 @@ impl Provider for Gate {
 }
 
 impl Provider for Kraken {
+    fn name(&self) -> &'static str { "Kraken" }
+
     fn url(&self, symbol: &str) -> String {
         format!(
             "https://api.kraken.com/0/public/Ticker?pair={}USD",
@@ -217,6 +225,8 @@ impl Provider for Kraken {
 }
 
 impl Provider for OKX {
+    fn name(&self) -> &'static str { "OKX" }
+
     fn url(&self, symbol: &str) -> String {
         format!(
             "https://eea.okx.com/api/v5/market/ticker?instId={}-USDT",
