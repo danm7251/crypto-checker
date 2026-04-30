@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, os::raw};
 use futures::future::join_all;
 use worker::*;
 
@@ -28,11 +28,19 @@ pub async fn price(req: &Request, env: &Env) -> Result<Response> {
         None => return Response::error("Missing required parameter: currency", 400),
     };
 
+    // Try and fetch responses from upstream data sources in parallel.
     let raw_results: Vec<Result<ResponseData>> = parallel_fetch(ALL_PROVIDERS, coin).await;
 
+    // Discard failed responses.
+    let results: Vec<ResponseData> = raw_results.into_iter().filter_map(|r| r.ok()).collect();
+
+    // Extract prices, don't consume `results` as it's needed later in debug mode.
+    let prices: Vec<f64> = results.iter().map(|r| r.price).collect();
+
+    // Check if environment is in debug mode.
     let debug = env.var("DEBUG").map(|v| v.to_string() == "true").unwrap_or(false);
 
-    match calculate_result(&raw_results) {
+    match calculate_result(&prices) {
         Ok((avg_price, sources)) => {
             let mut json = serde_json::json!({
                 "average_price": avg_price,
@@ -40,12 +48,13 @@ pub async fn price(req: &Request, env: &Env) -> Result<Response> {
             });
 
             if debug {
-                let timings: serde_json::Map<String, serde_json::Value> = raw_results
+                // Extract API name-latency pairs from response data.
+                let timings: serde_json::Map<String, serde_json::Value> = results
                     .iter()
-                    .filter_map(|r| r.as_ref().ok())
                     .map(|r| (r.name.to_string(), serde_json::json!(format!("{}ms", r.elapsed_ms))))
                     .collect();
 
+                // Append it to final response.
                 json["debug"] = serde_json::Value::Object(timings);
             }
 
@@ -57,15 +66,13 @@ pub async fn price(req: &Request, env: &Env) -> Result<Response> {
     }
 }
 
-fn calculate_result(results: &[Result<ResponseData>]) -> Result<(f64, u8)> {
+fn calculate_result(prices: &[f64]) -> Result<(f64, u8)> {
     let mut total_price = 0.0;
     let mut sources = 0;
 
-    for result in results {
-        if let Ok(response_data) = result {
-            total_price += response_data.price;
-            sources += 1;
-        }
+    for price in prices {
+        total_price += price;
+        sources += 1;
     }
 
     if sources <= MIN_SOURCES {
