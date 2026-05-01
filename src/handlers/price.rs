@@ -1,6 +1,7 @@
-use std::{collections::HashMap, os::raw};
-use futures::future::join_all;
-use worker::*;
+use core::time;
+use std::{collections::HashMap, os::raw, time::Duration};
+use futures::future::{Either, join_all, select};
+use worker::{web_sys::console::time, *};
 
 use crate::providers::{ALL_PROVIDERS, Provider};
 
@@ -87,9 +88,19 @@ fn calculate_result(prices: &[f64]) -> Result<(f64, u8)> {
 async fn parallel_fetch(providers: &[&dyn Provider], symbol: &str) -> Vec<Result<ResponseData>> {
     let futures = providers
         .iter()
-        .map(|&p| fetch_response(p, symbol)); 
+        .map(|&p| timeout(p, symbol, 300)); 
 
     join_all(futures).await
+}
+
+async fn timeout(provider: &dyn Provider, symbol: &str, timeout_ms: u64) -> Result<ResponseData> {
+    let fetch = Box::pin(fetch_response(provider, symbol));
+    let timeout = Box::pin(worker::Delay::from(Duration::from_millis(timeout_ms)));
+
+    match select(fetch, timeout).await {
+        Either::Left((response, _)) => response,
+        Either::Right(_) => Err(format!("{} timed out after {}ms", provider.name(), timeout_ms).into()),
+    }
 }
 
 #[derive(Debug)]
