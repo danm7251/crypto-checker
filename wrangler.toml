@@ -5,8 +5,14 @@ compatibility_date = "2026-03-16"
 [build]
 command = "cargo install -q \"worker-build@^0.7\" && worker-build --release"
 
+[vars]
+DEBUG = "true"
+TIMEOUT_MS = "1000"
+
 [env.staging.vars]
 DEBUG = "true"
+TIMEOUT_MS = "350"
 
 [env.production.vars]
 DEBUG = "false"
+TIMEOUT_MS = "350"
