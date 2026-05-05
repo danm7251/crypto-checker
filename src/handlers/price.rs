@@ -76,7 +76,7 @@ fn calculate_result(prices: &[f64]) -> Result<(f64, u8)> {
         sources += 1;
     }
 
-    if sources <= MIN_SOURCES {
+    if sources < MIN_SOURCES {
         return Err("Insufficient sources".into());
     }
 
