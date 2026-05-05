@@ -8,6 +8,10 @@ const MIN_SOURCES: u8 = 2;
 const SUPPORTED_FIAT: &[&str] = &["USD"];
 
 pub async fn price(req: &Request, env: &Env) -> Result<Response> {
+    // Extract environment variables
+    let debug= env.var("DEBUG").map(|v| v.to_string() == "true").unwrap_or(false);
+    let _timeout_ms = env.var("TIMEOUT_MS").ok().and_then(|v| v.to_string().parse::<u64>().ok());
+
     // Extract query parameters from URL
     let params = query_params(req)?;
 
@@ -36,9 +40,6 @@ pub async fn price(req: &Request, env: &Env) -> Result<Response> {
 
     // Extract prices, don't consume `results` as it's needed later in debug mode.
     let prices: Vec<f64> = results.iter().map(|r| r.price).collect();
-
-    // Check if environment is in debug mode.
-    let debug = env.var("DEBUG").map(|v| v.to_string() == "true").unwrap_or(false);
 
     match calculate_result(&prices) {
         Ok((avg_price, sources)) => {
