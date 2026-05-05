@@ -10,7 +10,7 @@ const SUPPORTED_FIAT: &[&str] = &["USD"];
 pub async fn price(req: &Request, env: &Env) -> Result<Response> {
     // Extract environment variables
     let debug= env.var("DEBUG").map(|v| v.to_string() == "true").unwrap_or(false);
-    let _timeout_ms = env.var("TIMEOUT_MS").ok().and_then(|v| v.to_string().parse::<u64>().ok());
+    let timeout_ms = env.var("TIMEOUT_MS").ok().and_then(|v| v.to_string().parse::<u64>().ok());
 
     // Extract query parameters from URL
     let params = query_params(req)?;
@@ -33,7 +33,7 @@ pub async fn price(req: &Request, env: &Env) -> Result<Response> {
     };
 
     // Try and fetch responses from upstream data sources in parallel.
-    let raw_results: Vec<Result<ResponseData>> = parallel_fetch(ALL_PROVIDERS, coin).await;
+    let raw_results: Vec<Result<ResponseData>> = parallel_fetch(coin, timeout_ms).await;
 
     // Discard failed responses.
     let results: Vec<ResponseData> = raw_results.into_iter().filter_map(|r| r.ok()).collect();
@@ -85,12 +85,19 @@ fn calculate_result(prices: &[f64]) -> Result<(f64, u8)> {
     Ok((avg_price, sources))
 }
 
-async fn parallel_fetch(providers: &[&dyn Provider], symbol: &str) -> Vec<Result<ResponseData>> {
-    let futures = providers
-        .iter()
-        .map(|&p| timeout(p, symbol, 300)); 
-
-    join_all(futures).await
+async fn parallel_fetch(symbol: &str, timeout_ms: Option<u64>) -> Vec<Result<ResponseData>> {
+    match timeout_ms {
+        Some(t) => {
+            join_all(
+                ALL_PROVIDERS.iter().map(|&p| timeout(p, symbol, t))
+            ).await
+        },
+        None => {
+            join_all(
+                ALL_PROVIDERS.iter().map(|&p| fetch_response(p, symbol))
+            ).await
+        }
+    }
 }
 
 async fn timeout(provider: &dyn Provider, symbol: &str, timeout_ms: u64) -> Result<ResponseData> {
