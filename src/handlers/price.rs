@@ -1,7 +1,6 @@
-use core::time;
-use std::{collections::HashMap, os::raw, time::Duration};
+use std::{collections::HashMap, time::Duration};
 use futures::future::{Either, join_all, select};
-use worker::{web_sys::console::time, *};
+use worker::*;
 
 use crate::providers::{ALL_PROVIDERS, Provider};
 
