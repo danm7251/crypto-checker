@@ -25,3 +25,10 @@ async fn fetch(req: Request, worker_env: Env, _worker_ctx: Context) -> Result<Re
         .run(req, worker_env)
         .await
 }
+
+#[event(scheduled)]
+async fn scheduled(_event: ScheduledEvent, env: Env, _ctx: ScheduleContext) {
+    if let Err(e) = handlers::sync_fiat_rates(&env).await {
+        console_error!("Failed to sync fiat rates: {:?}", e);
+    }
+}

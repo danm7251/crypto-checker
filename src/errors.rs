@@ -2,6 +2,7 @@ use serde::Serialize;
 use worker::{Response, ResponseBuilder, console_error, console_warn};
 
 // Custom error type that maps to specific errors this application may encounter.
+#[derive(Debug)]
 pub enum AppError {
     Internal { error: String },
     InsufficientSources,

@@ -5,18 +5,35 @@ compatibility_date = "2026-03-16"
 [build]
 command = "cargo install -q \"worker-build@^0.7\" && worker-build --release"
 
+[triggers]
+crons = ["0 * * * *"]
+
 [vars]
 DEBUG = "true"
 TIMEOUT_MS = "1000"
+
+[[kv_namespaces]]
+binding = "FIAT_RATES"
+id = "1bcd6423b55e4ec7bafd25e656af8a90"
+
+[env.staging.triggers]
+crons = ["0 * * * *"]
 
 [env.staging.vars]
 DEBUG = "true"
 TIMEOUT_MS = "350"
 
+[[env.staging.kv_namespaces]]
+binding = "FIAT_RATES"
+id = "f31abe1531b340a5bdcbbb8c1956cfe5"
+
+[env.production.triggers]
+crons = ["0 * * * *"]
+
 [env.production.vars]
 DEBUG = "false"
 TIMEOUT_MS = "350"
 
-[[kv_namespaces]]
+[[env.production.kv_namespaces]]
 binding = "FIAT_RATES"
-id = "1bcd6423b55e4ec7bafd25e656af8a90"
+id = "e2b9c8777c2d40f0bfae1ca17167d571"
