@@ -1,6 +1,7 @@
 use serde::Serialize;
-use worker::{Headers, Response, ResponseBuilder, console_error, console_warn};
+use worker::{Response, ResponseBuilder, console_error, console_warn};
 
+// Custom error type that maps to specific errors this application may encounter.
 pub enum AppError {
     Internal { error: String },
     InsufficientSources,
@@ -8,6 +9,7 @@ pub enum AppError {
     RequiredParameter { param: &'static str }
 }
 
+// Client facing representation of an error, following RFC 9457.
 #[derive(Serialize)]
 struct ProblemDetails {
     title: &'static str,
@@ -15,6 +17,7 @@ struct ProblemDetails {
     detail: String
 }
 
+// Conversion from internal to external representation.
 impl From<AppError> for ProblemDetails {
     fn from(error: AppError) -> Self {
         match error {
@@ -49,15 +52,22 @@ impl From<AppError> for ProblemDetails {
     }
 }
 
+// Builds a response containing ProblemDetails from an AppError.
 impl AppError {
     // Uses `expect()` as these are unrecoverable errors. These should only trigger if the runtime itself is broken.
     pub fn into_response(self) -> Response {
-        let headers = Headers::new();
-        headers.set("Content-Type", "application/problem+json").expect("Failed to set headers");
-
         let problem: ProblemDetails = self.into();
-        //TODO: Header is still application/json, status is still 200 OK.
-        ResponseBuilder::new().with_headers(headers).from_json(&problem).expect("Failed to build error")
+        
+        let mut response = ResponseBuilder::new()
+            .with_status(problem.status)
+            .from_json(&problem)
+            .expect("Failed to build error response");
+
+        response.headers_mut()
+            .set("Content-Type", "application/problem+json")
+            .expect("Failed to set error response headers");
+
+        response
     }
 }
 
@@ -65,6 +75,7 @@ pub trait IntoInternal<T> {
     fn or_internal_error(self) -> Result<T, AppError>;
 }
 
+// Converts error types into a generic AppError::Internal { msg }.
 impl<T, E: ToString> IntoInternal<T> for Result<T, E> {
     fn or_internal_error(self) -> Result<T, AppError> {
         self.map_err(|e| AppError::Internal { error: e.to_string() })
