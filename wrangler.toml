@@ -16,3 +16,7 @@ TIMEOUT_MS = "350"
 [env.production.vars]
 DEBUG = "false"
 TIMEOUT_MS = "350"
+
+[[kv_namespaces]]
+binding = "FIAT_RATES"
+id = "1bcd6423b55e4ec7bafd25e656af8a90"
