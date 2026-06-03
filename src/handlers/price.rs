@@ -2,7 +2,7 @@ use std::{collections::HashMap, time::Duration};
 use futures::future::{Either, join_all, select};
 use worker::*;
 
-use crate::{errors::{AppError, IntoInternal}, providers::{ALL_PROVIDERS, Provider}};
+use crate::{errors::AppError, providers::{ALL_PROVIDERS, Provider}};
 
 const MIN_SOURCES: u8 = 2;
 const SUPPORTED_FIAT: &[&str] = &["USD"];
@@ -61,7 +61,7 @@ pub async fn price(req: &Request, env: &Env) -> Result<Response, AppError> {
         json["debug"] = serde_json::Value::Object(timings);
     }
 
-    Response::from_json(&json).or_internal_error()
+    Ok(Response::from_json(&json)?)
 }
 
 fn calculate_result(prices: &[f64]) -> Result<(f64, u8), AppError> {
@@ -121,18 +121,18 @@ async fn fetch_response(provider: &dyn Provider, symbol: &str) -> Result<Respons
     let uri = provider.url(symbol);
 
     let headers = Headers::new();
-    headers.set("Accept", "application/json").or_internal_error()?;
+    headers.set("Accept", "application/json")?;
 
     let mut init = RequestInit::new();
     init.with_headers(headers);
 
-    let request = Request::new_with_init(&uri, &init).or_internal_error()?;
+    let request = Request::new_with_init(&uri, &init)?;
     let start_time = worker::Date::now().as_millis();
-    let mut response = Fetch::Request(request).send().await.or_internal_error()?;
+    let mut response = Fetch::Request(request).send().await?;
     let elapsed_ms = worker::Date::now().as_millis() - start_time;
 
-    let body = response.text().await.or_internal_error()?;
-    let price = provider.parse_response(&body).or_internal_error()?;
+    let body = response.text().await?;
+    let price = provider.parse_response(&body)?;
 
     Ok(ResponseData {
         name: provider.name(),
@@ -143,7 +143,7 @@ async fn fetch_response(provider: &dyn Provider, symbol: &str) -> Result<Respons
 
 // Parses a Request into a HashMap of query parameters
 fn query_params(req: &Request) -> Result<HashMap<String, String>, AppError> {
-    let url = req.url().or_internal_error()?;
+    let url = req.url()?;
     Ok(url
         .query_pairs()
         .map(|(k, v)| (k.into_owned(), v.into_owned()))

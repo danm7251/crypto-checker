@@ -20,8 +20,8 @@ struct ProblemDetails {
 
 // Conversion from internal to external representation.
 impl From<AppError> for ProblemDetails {
-    fn from(error: AppError) -> Self {
-        match error {
+    fn from(e: AppError) -> Self {
+        match e {
             AppError::InsufficientSources => {
                 console_warn!("503 Insufficient Sources");
                 ProblemDetails {
@@ -72,13 +72,20 @@ impl AppError {
     }
 }
 
-pub trait IntoInternal<T> {
-    fn or_internal_error(self) -> Result<T, AppError>;
+impl From<worker::Error> for AppError {
+    fn from(e: worker::Error) -> Self {
+        AppError::Internal { error: e.to_string() }
+    }
 }
 
-// Converts error types into a generic AppError::Internal { msg }.
-impl<T, E: ToString> IntoInternal<T> for Result<T, E> {
-    fn or_internal_error(self) -> Result<T, AppError> {
-        self.map_err(|e| AppError::Internal { error: e.to_string() })
+impl From<worker::KvError> for AppError {
+    fn from(e: worker::KvError) -> Self {
+        AppError::Internal { error: e.to_string() }
+    }
+}
+
+impl From<serde_json::Error> for AppError {
+    fn from(e: serde_json::Error) -> Self {
+        AppError::Internal { error: e.to_string() }
     }
 }
